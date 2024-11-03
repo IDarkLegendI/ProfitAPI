@@ -1,0 +1,28 @@
+@ProfitAPI_HostAddress = http://localhost:5200
+
+### Получить все элементы
+GET {{ProfitAPI_HostAddress}}/api/items
+Accept: application/json
+
+### Создать новый элемент
+POST {{ProfitAPI_HostAddress}}/api/items
+Content-Type: application/json
+
+{
+  "name": "Новый элемент",
+  "description": "Описание нового элемента",
+  "price": 100
+}
+
+### Обновить элемент по ID
+PUT {{ProfitAPI_HostAddress}}/api/items/1
+Content-Type: application/json
+
+{
+  "name": "Обновленный элемент",
+  "description": "Обновленное описание",
+  "price": 150
+}
+
+### Удалить элемент по ID
+DELETE {{ProfitAPI_HostAddress}}/api/items/1
