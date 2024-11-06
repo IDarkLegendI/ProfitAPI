@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
-import ProductService from '../services/ProductService';
+import ProductService, { Product } from '../services/ProductService';
 
-const ProductList = () => {
-    const [products, setProducts] = useState([]);
+const ProductList: React.FC = () => {
+    const [products, setProducts] = useState<Product[]>([]);
 
     useEffect(() => {
         ProductService.getAllProducts()
