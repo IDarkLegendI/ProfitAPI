@@ -1,91 +1,52 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 using ProfitAPI.Models;
-using ProfitAPI.Services;
-using System.Collections.Generic;
-using OfficeOpenXml;
 
-namespace ProfitAPI.Controllers;
 [Route("api/[controller]")]
-[ApiController]
-public class ProductsController(IProductService productService) : ControllerBase
+[ApiController] 
+public class ProductsController : ControllerBase
 {
-    [HttpGet]
-    public ActionResult<IEnumerable<LocalProduct>> GetProducts()
+    private readonly ApplicationDbContext _context;
+
+    public ProductsController(ApplicationDbContext context)
     {
-        return Ok(productService.GetAllProducts());
+        _context = context;
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAllProducts() => Ok(await _context.Products.ToListAsync());
 
     [HttpGet("{id}")]
-    public ActionResult<LocalProduct> GetProduct(int id)
-    {
-        var product = productService.GetProductById(id);
-        if (product == null)
-            return NotFound();
-
-        return Ok(product);
-    }
+    public async Task<IActionResult> GetProductById(int id) =>
+        await _context.Products.FindAsync(id) is LocalProduct product ? Ok(product) : NotFound();
 
     [HttpPost]
-    public ActionResult AddProduct(LocalProduct product)
+    public async Task<IActionResult> CreateProduct([FromBody] LocalProduct product)
     {
-        productService.AddProduct(product);
-        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, product);
     }
 
     [HttpPut("{id}")]
-    public ActionResult UpdateProduct(int id, LocalProduct product)
+    public async Task<IActionResult> UpdateProduct(int id, [FromBody] LocalProduct product)
     {
-        if (id != product.Id)
-            return BadRequest();
+        if (id != product.Id) return BadRequest();
 
-        var existingProduct = productService.GetProductById(id);
-        if (existingProduct == null)
-            return NotFound();
-
-        productService.UpdateProduct(product);
+        _context.Entry(product).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public ActionResult DeleteProduct(int id)
+    public async Task<IActionResult> DeleteProduct(int id)
     {
-        var product = productService.GetProductById(id);
-        if (product == null)
-            return NotFound();
+        var product = await _context.Products.FindAsync(id);
+        if (product == null) return NotFound();
 
-        productService.DeleteProduct(id);
+        _context.Products.Remove(product);
+        await _context.SaveChangesAsync();
         return NoContent();
-    }
-    [HttpGet("export")]
-    public IActionResult ExportToExcel()
-    {
-        var products = productService.GetAllProducts().ToList();
-
-        using (var package = new ExcelPackage())
-        {
-            var worksheet = package.Workbook.Worksheets.Add("Products");
-            worksheet.Cells[1, 1].Value = "ID";
-            worksheet.Cells[1, 2].Value = "Name";
-            worksheet.Cells[1, 3].Value = "Description";
-            worksheet.Cells[1, 4].Value = "Price";
-            worksheet.Cells[1, 5].Value = "Stock";
-
-            for (int i = 0; i < products.Count; i++)
-            {
-                var product = products[i];
-                worksheet.Cells[i + 2, 1].Value = product.Id;
-                worksheet.Cells[i + 2, 2].Value = product.Name;
-                worksheet.Cells[i + 2, 3].Value = product.Description;
-                worksheet.Cells[i + 2, 4].Value = product.Price;
-                worksheet.Cells[i + 2, 5].Value = product.Stock;
-            }
-
-            var stream = new MemoryStream();
-            package.SaveAs(stream);
-            stream.Position = 0;
-
-            var fileName = $"Products_{System.DateTime.Now:yyyyMMddHHmmss}.xlsx";
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        }
     }
 }
